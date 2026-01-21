@@ -3,18 +3,23 @@ package kr.astar.wfliv;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import kr.astar.wfliv.data.Donation;
+import kr.astar.wfliv.data.DonationData;
+import kr.astar.wfliv.data.PlatformData;
+import kr.astar.wfliv.data.User;
 import kr.astar.wfliv.listener.WeflabListener;
 import lombok.Getter;
 import okhttp3.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Collector;
 import org.jsoup.select.Elements;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -22,6 +27,7 @@ public class Weflab extends WebSocketListener {
     private String key;
     private final List<WeflabListener> listeners;
 
+    @Getter
     private String idx;
     private WebSocket socket;
 
@@ -96,7 +102,7 @@ public class Weflab extends WebSocketListener {
     @Override
     public void onOpen(@NonNull WebSocket webSocket, @NonNull Response response) {
         for (WeflabListener listener: listeners)
-            listener.onConnect();
+            listener.onConnect(response);
     }
 
     @Override
@@ -118,11 +124,64 @@ public class Weflab extends WebSocketListener {
             // 42["msg",{"type":"test_donation","data":{"platform":"youtube","time":1768971964473,"type":"superchat","msg":"TEST MESSAGE","uid":"TEST","uname":"TEST","value":"1000"},"page":"setup","idx":"mNzL0s3DwWlxZXJZ1pWenJqD","pageid":"chat","preset":"0"}]
             try {
                 JsonArray json = new Gson().fromJson(text.substring(1), JsonArray.class);
+                String receive = json.get(0).getAsString();
+                JsonObject receiveData = json.get(1).getAsJsonObject();
 
-                //todo: YEAH
+                if (Objects.equals(receive, "pong")) {
+                    String platform= receiveData.get("platform").getAsString();
+                    return;
+                }
+
+                if (Objects.equals(receive, "msg")) {
+                    String type= receiveData.get("type").getAsString(); // test_donation
+                    JsonObject data= receiveData.get("data").getAsJsonObject();
+                    boolean isTestDonation= Objects.equals(type, "test_donation");
+
+                    String page= receiveData.get("page").getAsString();
+                    String idx= receiveData.get("idx").getAsString();
+                    String pageid= receiveData.get("pageid").getAsString();
+                    String preset= receiveData.get("preset").getAsString();
+
+                    DonationData donationData= new DonationData(
+                            page, idx,
+                            pageid, preset
+                    );
+
+                    Donation donation= new Donation(
+                            new User(
+                                    data.get("uname").getAsString(),
+                                    data.get("uid").getAsString()
+                            ),
+                            data.get("msg").getAsString(),
+                            data.get("value").getAsLong(),
+                            isTestDonation,
+                            data.get("time").getAsLong(),
+                            donationData,
+                            new PlatformData(
+                                    data.get("platform").getAsString(),
+                                    data.get("type").getAsString()
+                            )
+                    );
+
+                    for (WeflabListener listener: listeners)
+                        listener.onDonation(donation);
+
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public void onClosing(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
+        for (WeflabListener listener: listeners)
+            listener.onDisconnect(code, reason);
+    }
+
+    @Override
+    public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
+        for (WeflabListener listener: listeners)
+            listener.onFail(t, response);
     }
 }

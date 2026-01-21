@@ -1,8 +1,13 @@
 package kr.astar.wfliv.data;
 
 public record Donation(
-        String nickname,
+        User user,
         String content,
-        long amount
+        long amount,
+        boolean isTest,
+        long timestamp,
+        DonationData donationData,
+        PlatformData platformData
 ) {
 }
+

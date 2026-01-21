@@ -1,6 +1,6 @@
 package kr.astar.wfliv.data;
 
 public record Chat(
-        String nickname,
+        User user,
         String content
 ) {}
