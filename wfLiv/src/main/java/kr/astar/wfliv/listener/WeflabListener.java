@@ -1,7 +1,6 @@
 package kr.astar.wfliv.listener;
 
-import kr.astar.wfliv.data.Chat;
-import kr.astar.wfliv.data.Donation;
+import kr.astar.wfliv.data.alert.Donation;
 import okhttp3.Response;
 import org.jspecify.annotations.NonNull;
 

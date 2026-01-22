@@ -4,10 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import kr.astar.wfliv.data.Donation;
-import kr.astar.wfliv.data.DonationData;
-import kr.astar.wfliv.data.PlatformData;
-import kr.astar.wfliv.data.User;
+import kr.astar.wfliv.data.alert.Donation;
+import kr.astar.wfliv.data.alert.DonationData;
+import kr.astar.wfliv.data.alert.PlatformData;
+import kr.astar.wfliv.data.alert.User;
+import kr.astar.wfliv.data.streamer.StreamerData;
 import kr.astar.wfliv.listener.WeflabListener;
 import lombok.Getter;
 import okhttp3.*;
@@ -37,9 +38,7 @@ public class Weflab extends WebSocketListener {
     private boolean closed=true;
 
     @Getter
-    private String StreamerName;
-    @Getter
-    private String StreamerEmail;
+    private StreamerData streamerData;
 
     public Weflab(WeflabBuilder weflabBuilder) {
         this.key = weflabBuilder.getKey();
@@ -72,10 +71,16 @@ public class Weflab extends WebSocketListener {
             String streamerEmail= loginDataJson.get("user").getAsJsonObject().get("email").getAsString();
 
             if (idx1==null) throw new Exception("Idx not found");
-
-            this.StreamerName = streamerName;
-            this.StreamerEmail = streamerEmail;
             this.idx = idx1;
+
+            this.streamerData= new StreamerData(
+                    loginDataJson.get("login_type").getAsString(),
+                    idx1,
+                    loginDataJson.get("userid").getAsString(),
+                    streamerName, streamerEmail,
+                    loginDataJson.get("mobile").getAsBoolean(),
+                    loginDataJson.get("ios").getAsBoolean()
+            );
 
             OkHttpClient client=new OkHttpClient().newBuilder()
                     .pingInterval(12, TimeUnit.SECONDS)

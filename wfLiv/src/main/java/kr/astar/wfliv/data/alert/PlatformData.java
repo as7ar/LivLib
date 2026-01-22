@@ -1,4 +1,4 @@
-package kr.astar.wfliv.data;
+package kr.astar.wfliv.data.alert;
 
 public record PlatformData(
         String platform,

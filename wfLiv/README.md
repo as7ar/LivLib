@@ -1,7 +1,7 @@
 ```java
 import kr.astar.wfliv.Weflab;
 import kr.astar.wfliv.WeflabBuilder;
-import kr.astar.wfliv.data.Donation;
+import kr.astar.wfliv.data.alert.Donation;
 import kr.astar.wfliv.listener.WeflabListener;
 
 Weflab weflab= new WeflabBuilder("hN_G2suam2VxaA") // https://weflab.com/page/(here)
