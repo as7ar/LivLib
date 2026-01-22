@@ -3,6 +3,7 @@ package kr.astar.wfliv;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import kr.astar.wfliv.data.Donation;
 import kr.astar.wfliv.data.DonationData;
 import kr.astar.wfliv.data.PlatformData;
@@ -21,15 +22,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Weflab extends WebSocketListener {
-    private String key;
+    private final String key;
     private final List<WeflabListener> listeners;
 
     @Getter
     private String idx;
+
     private WebSocket socket;
+    private boolean closed=true;
 
     @Getter
     private String StreamerName;
@@ -60,7 +65,7 @@ public class Weflab extends WebSocketListener {
 
             JsonObject loginDataJson= parseLoginData(script);
 
-            System.out.println(loginDataJson.toString()); // todo: TEST
+//            System.out.println(loginDataJson.toString());
 
             String idx1 = loginDataJson.get("idx").getAsString();
             String streamerName= loginDataJson.get("user").getAsJsonObject().get("name").getAsString();
@@ -86,7 +91,7 @@ public class Weflab extends WebSocketListener {
                                     + "&EIO=4&transport=websocket"
                     )
                     .build();
-            socket =client.newWebSocket(request, this);
+            socket = client.newWebSocket(request, this);
             socket.send("40");
 
         } catch (Exception e) {
@@ -95,8 +100,15 @@ public class Weflab extends WebSocketListener {
     }
 
     private JsonObject parseLoginData(String script) {
-        String jsonPart = script.split(" = ")[1];
-        return new Gson().fromJson(jsonPart, JsonObject.class);
+        Pattern p = Pattern.compile("loginData\\s*=\\s*(\\{.*?})\\s*;", Pattern.DOTALL);
+        Matcher m = p.matcher(script);
+
+        if (!m.find())
+            throw new IllegalStateException("loginData not found");
+
+        String json = m.group(1);
+//        System.out.println(json);
+        return new Gson().fromJson(json, JsonObject.class);
     }
 
     @Override
@@ -121,9 +133,11 @@ public class Weflab extends WebSocketListener {
 
         if (text.startsWith("42")) {
             // text
-            // 42["msg",{"type":"test_donation","data":{"platform":"youtube","time":1768971964473,"type":"superchat","msg":"TEST MESSAGE","uid":"TEST","uname":"TEST","value":"1000"},"page":"setup","idx":"mNzL0s3DwWlxZXJZ1pWenJqD","pageid":"chat","preset":"0"}]
+            String rawJson = text.startsWith("42")
+                    ? text.substring(2)
+                    : text;
             try {
-                JsonArray json = new Gson().fromJson(text.substring(1), JsonArray.class);
+                JsonArray json = JsonParser.parseString(rawJson).getAsJsonArray();
                 String receive = json.get(0).getAsString();
                 JsonObject receiveData = json.get(1).getAsJsonObject();
 
@@ -173,6 +187,19 @@ public class Weflab extends WebSocketListener {
         }
     }
 
+    public boolean close() {
+        try {
+            if (socket != null) {
+                socket.close(1000, "Client closing");
+                socket = null;
+            }
+            closed=true;
+        } catch (Exception ignored) {
+            return false;
+        }
+        return true;
+    }
+
     @Override
     public void onClosing(@NonNull WebSocket webSocket, int code, @NonNull String reason) {
         for (WeflabListener listener: listeners)
@@ -181,6 +208,8 @@ public class Weflab extends WebSocketListener {
 
     @Override
     public void onFailure(@NonNull WebSocket webSocket, @NonNull Throwable t, @Nullable Response response) {
+        if (closed) return;
+        webSocket.close(1000, "Error occurred");
         for (WeflabListener listener: listeners)
             listener.onFail(t, response);
     }

@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("com.gradleup.shadow")
 }
 
 group = "kr.as7ar"
@@ -17,4 +18,11 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.shadowJar {
+    archiveClassifier.set("")
+    mergeServiceFiles()
+
+    archiveFileName.set("wfLib-$version.jar")
 }

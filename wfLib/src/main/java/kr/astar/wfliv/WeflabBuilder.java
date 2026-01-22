@@ -3,6 +3,7 @@ package kr.astar.wfliv;
 import kr.astar.wfliv.listener.WeflabListener;
 import lombok.Getter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class WeflabBuilder {
@@ -13,6 +14,7 @@ public class WeflabBuilder {
 
     public WeflabBuilder(String key) {
         this.key = key;
+        listeners=new ArrayList<>();
     }
 
     public WeflabBuilder addListener(WeflabListener listener) {
