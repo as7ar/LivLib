@@ -11,13 +11,13 @@ import kr.astar.wfliv.data.alert.User;
 import kr.astar.wfliv.data.streamer.StreamerData;
 import kr.astar.wfliv.listener.WeflabListener;
 import lombok.Getter;
+import lombok.NonNull;
 import okhttp3.*;
+import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;

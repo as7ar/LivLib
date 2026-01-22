@@ -1,8 +1,8 @@
 package kr.astar.wfliv.listener;
 
 import kr.astar.wfliv.data.alert.Donation;
+import lombok.NonNull;
 import okhttp3.Response;
-import org.jspecify.annotations.NonNull;
 
 public interface WeflabListener {
 //    default void onChat(Chat chat) {}
