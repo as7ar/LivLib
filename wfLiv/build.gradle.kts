@@ -24,5 +24,5 @@ tasks.shadowJar {
     archiveClassifier.set("")
     mergeServiceFiles()
 
-    archiveFileName.set("wfLib-$version.jar")
+    archiveFileName.set("wfLiv-$version.jar")
 }

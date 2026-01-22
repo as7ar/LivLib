@@ -9,9 +9,9 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/TooLiv" />
+            <option value="$PROJECT_DIR$/tooLiv" />
             <option value="$PROJECT_DIR$/uLiv" />
-            <option value="$PROJECT_DIR$/wfLib" />
+            <option value="$PROJECT_DIR$/wfLiv" />
           </set>
         </option>
       </GradleProjectSettings>

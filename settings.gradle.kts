@@ -9,6 +9,4 @@ dependencyResolutionManagement {
         maven("https://jitpack.io")
     }
 }
-include("uLiv")
-include("TooLiv")
-include("wfLib")
+include("uLiv", "tooLiv", "wfLiv")
