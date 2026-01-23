@@ -17,8 +17,7 @@ dependencies {
 
     implementation("io.reactivex.rxjava3:rxjava:3.1.10")
 
-    implementation("org.seleniumhq.selenium:selenium-java:4.34.0")
-    implementation("io.github.bonigarcia:webdrivermanager:6.2.0")
+    implementation("com.microsoft.playwright:playwright:1.57.0")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

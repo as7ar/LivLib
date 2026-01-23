@@ -2,6 +2,7 @@ package kr.astar.tooliv;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.microsoft.playwright.*;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 import kr.astar.tooliv.data.Chatting;
@@ -11,22 +12,15 @@ import kr.astar.tooliv.listener.ToonationEventListener;
 import kr.astar.tooliv.utilities.Debugger;
 import kr.astar.tooliv.utilities.Streamer;
 import lombok.Getter;
+import lombok.NonNull;
 import okhttp3.*;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.jspecify.annotations.NonNull;
-import org.openqa.selenium.By;
-import org.openqa.selenium.InvalidCookieDomainException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
-
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -36,8 +30,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static io.github.bonigarcia.wdm.WebDriverManager.chromedriver;
 
 public class Toonation extends WebSocketListener {
     @Getter
@@ -54,34 +46,33 @@ public class Toonation extends WebSocketListener {
 
     private static final ExecutorService seleniumExecutor = Executors.newSingleThreadExecutor();
 
-    public static Future<Streamer> getStreamerAsync(String id) {
+    public synchronized static Future<Streamer> getStreamerAsync(String id) {
         return seleniumExecutor.submit(() -> getStreamer(id));
     }
 
     public static Streamer getStreamer(String id) {
-        chromedriver().setup();
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        options.addArguments("--disable-gpu");
-        WebDriver driver = new ChromeDriver(options);
-
-        try {
-            driver.get("https://toon.at/donate/" + id);
-
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(5));
-            WebElement el = wait.until(
-                    ExpectedConditions.visibilityOfElementLocated(
-                            By.cssSelector("[class*='DisplayCreatorName']")
-                    )
+        try (Playwright playwright = Playwright.create()) {
+            Browser browser = playwright.chromium().launch(
+                    new BrowserType.LaunchOptions()
+                            .setHeadless(true)
             );
 
-            String nickname = el.getText();
+            BrowserContext context = browser.newContext();
+            Page page = context.newPage();
+
+            page.navigate("https://toon.at/donate/" + id);
+
+            Locator creatorName = page.locator("[class*='DisplayCreatorName']");
+            creatorName.waitFor(new Locator.WaitForOptions()
+                    .setTimeout(5000)
+            );
+
+            String nickname = creatorName.innerText();
             return new Streamer(id, nickname);
+
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        } finally {
-            driver.quit();
         }
     }
 
@@ -134,8 +125,7 @@ public class Toonation extends WebSocketListener {
                 for (ToonationEventListener listener: listeners)
                     listener.onDonation(donation);
             }
-        } catch (InvalidCookieDomainException ignore) {
-        } catch (Exception e) {
+        }catch (Exception e) {
             e.printStackTrace();
         }
     }

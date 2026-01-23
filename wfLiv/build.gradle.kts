@@ -13,6 +13,7 @@ repositories {
 dependencies {
     implementation("org.jsoup:jsoup:1.15.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+//    implementation("com.microsoft.playwright:playwright:1.57.0")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

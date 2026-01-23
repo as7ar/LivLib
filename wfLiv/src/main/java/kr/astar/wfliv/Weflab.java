@@ -9,6 +9,8 @@ import kr.astar.wfliv.data.alert.DonationData;
 import kr.astar.wfliv.data.alert.PlatformData;
 import kr.astar.wfliv.data.alert.User;
 import kr.astar.wfliv.data.streamer.StreamerData;
+import kr.astar.wfliv.enums.DonationType;
+import kr.astar.wfliv.enums.MessageID;
 import kr.astar.wfliv.listener.WeflabListener;
 import lombok.Getter;
 import lombok.NonNull;
@@ -30,12 +32,16 @@ import java.util.stream.Collectors;
 public class Weflab extends WebSocketListener {
     private final String key;
     private final List<WeflabListener> listeners;
+    private final boolean enableDebug;
 
     @Getter
     private String idx;
 
+    private OkHttpClient client;
     private WebSocket socket;
+
     private boolean closed=true;
+    private String pageid;
 
     @Getter
     private StreamerData streamerData;
@@ -43,6 +49,11 @@ public class Weflab extends WebSocketListener {
     public Weflab(WeflabBuilder weflabBuilder) {
         this.key = weflabBuilder.getKey();
         this.listeners= weflabBuilder.getListeners();
+        this.enableDebug = weflabBuilder.isEnableDebug();
+
+        if (this.key==null || this.key.isEmpty()) {
+            throw new NullPointerException("Page Key is EMPTY");
+        }
 
         try {
             Document document= Jsoup
@@ -63,6 +74,9 @@ public class Weflab extends WebSocketListener {
                     .collect(Collectors.joining());
 
             JsonObject loginDataJson= parseLoginData(script);
+            if (loginDataJson==null) return;
+
+            this.pageid= loginDataJson.get("pageid").getAsString();
 
 //            System.out.println(loginDataJson.toString());
 
@@ -74,7 +88,7 @@ public class Weflab extends WebSocketListener {
             this.idx = idx1;
 
             this.streamerData= new StreamerData(
-                    loginDataJson.get("login_type").getAsString(),
+                    loginDataJson.get("login").getAsString(),
                     idx1,
                     loginDataJson.get("userid").getAsString(),
                     streamerName, streamerEmail,
@@ -82,22 +96,14 @@ public class Weflab extends WebSocketListener {
                     loginDataJson.get("ios").getAsBoolean()
             );
 
-            OkHttpClient client=new OkHttpClient().newBuilder()
+            this.client=new OkHttpClient().newBuilder()
                     .pingInterval(12, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(0, TimeUnit.MILLISECONDS)
                     .build();
-            Request request=new Request.Builder()
-                    .url(
-                            "wss://ssmain.weflab.com/socket.io/?idx=" + idx
-                                    + "&type=page&page="
-                                    + "chat"
-                                    + "&EIO=4&transport=websocket"
-                    )
-                    .build();
-            socket = client.newWebSocket(request, this);
-            socket.send("40");
+
+            connect();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -124,21 +130,23 @@ public class Weflab extends WebSocketListener {
 
     @Override
     public void onMessage(@NonNull WebSocket webSocket, @NonNull String text) {
-        if (text.equals("2")) { // Websocket Client Ping for checking Connected
+        if (enableDebug) System.out.println("\u001B[33m"+text + "\u001B[0m");
+        if (text.equals(MessageID.PING.getNumber())) { // Websocket Client Ping for checking Connected
             webSocket.send("3");
             return;
         }
 
-        if (text.startsWith("40")) { // Websocket Register
+        if (text.startsWith(MessageID.REGISTER.getNumber())) { // Websocket Register
             // text: 40{"sid":"RKvSWkbKA8timc0JCl4G"}
             webSocket.send("42[\"msg\",{\"type\":\"join\",\"page\":\"page\",\"idx\":\""
-                    + this.idx + "\",\"pageid\":\"chat\",\"preset\":\"0\"}]");
+                    + this.idx + "\",\"pageid\":\""
+                    + this.pageid + "\",\"preset\":\"0\"}]");
             return;
         }
 
-        if (text.startsWith("42")) {
+        if (text.startsWith(MessageID.MESSAGE.getNumber())) {
             // text
-            String rawJson = text.startsWith("42")
+            String rawJson = text.startsWith(MessageID.MESSAGE.getNumber())
                     ? text.substring(2)
                     : text;
             try {
@@ -153,6 +161,13 @@ public class Weflab extends WebSocketListener {
 
                 if (Objects.equals(receive, "msg")) {
                     String type= receiveData.get("type").getAsString(); // test_donation
+
+                    if (type.equals(DonationType.LOAD.getType())) {
+                        // Donation alert page reloaded caused by Weflab Setting Changed
+                        reconnect();
+                        return;
+                    }
+
                     JsonObject data= receiveData.get("data").getAsJsonObject();
                     boolean isTestDonation= Objects.equals(type, "test_donation");
 
@@ -192,11 +207,47 @@ public class Weflab extends WebSocketListener {
         }
     }
 
+//    public synchronized void XHRRequestListener() {
+//        Playwright pw = Playwright.create();
+//        Browser browser = pw.chromium().launch();
+//        BrowserContext ctx = browser.newContext();
+//        Page page = ctx.newPage();
+//
+//        page.onRequest(req -> {
+//            if (req.resourceType().equals("image") || Objects.equals(req.resourceType(), "font")) return;
+//            System.out.println("ResourceType: " + req.resourceType());
+//            System.out.println("URL: " + req.url());
+//            System.out.println("METHOD: " + req.method());
+//            System.out.println("POST: " + req.postData());
+//        });
+//
+//        page.navigate(alertPageURL);
+//
+//    }
+
+    private void reconnect() {
+        close();
+        connect();
+    }
+
+    private void connect() {
+        Request request=new Request.Builder()
+                .url("wss://ssmain.weflab.com/socket.io/?idx="
+                        + idx + "&type=page&page="
+                        + this.pageid + "&EIO=4&transport=websocket"
+                )
+                .build();
+        this.socket = client.newWebSocket(request, this);
+        this.socket.send("40");
+//        XHRRequestListener();
+    }
+
     public boolean close() {
         try {
             if (socket != null) {
-                socket.close(1000, "Client closing");
+                boolean suc= socket.close(1000, "Client closing");
                 socket = null;
+                return suc;
             }
             closed=true;
         } catch (Exception ignored) {
