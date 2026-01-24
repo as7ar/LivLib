@@ -24,6 +24,8 @@ import org.jsoup.select.Elements;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -199,6 +201,33 @@ public class Weflab extends WebSocketListener {
 
                     for (WeflabListener listener: listeners)
                         listener.onDonation(donation);
+
+
+                    // [ roulette ]
+
+                    ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+                    scheduler.schedule(() -> {
+                        try {
+                            Document document= Jsoup
+                                    .connect("https://weflab.com/page/"+ key)
+                                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0")
+                                    .ignoreHttpErrors(true)
+                                    .ignoreContentType(true)
+                                    .cookies(Map.of())
+                                    .get();
+
+//                            Elements element = document.getElementsByTag("div");
+//                            String rouletteWrap = element.stream()
+//                                    .filter(e->
+//                                            e.hasClass("text") && e.hasClass("var")
+//                                    )
+//                                    .map(Element::toString)
+//                                    .collect(Collectors.joining());
+//                            System.out.println(rouletteWrap);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }, 500, TimeUnit.MILLISECONDS);
 
                 }
             } catch (Exception e) {
