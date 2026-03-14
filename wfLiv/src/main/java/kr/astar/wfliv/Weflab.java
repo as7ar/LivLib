@@ -11,16 +11,26 @@ import kr.astar.wfliv.data.alert.User;
 import kr.astar.wfliv.data.streamer.StreamerData;
 import kr.astar.wfliv.enums.DonationType;
 import kr.astar.wfliv.enums.MessageID;
+import kr.astar.wfliv.listener.RouletteInfoListener;
 import kr.astar.wfliv.listener.WeflabListener;
 import lombok.Getter;
 import lombok.NonNull;
+import me.friwi.jcefmaven.CefAppBuilder;
+import me.friwi.jcefmaven.CefInitializationException;
+import me.friwi.jcefmaven.UnsupportedPlatformException;
 import okhttp3.*;
+import org.cef.CefApp;
+import org.cef.CefClient;
+import org.cef.browser.CefBrowser;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import javax.swing.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +43,7 @@ import java.util.stream.Collectors;
 
 public class Weflab extends WebSocketListener {
     private final String key;
+    private final String URI;
     private final List<WeflabListener> listeners;
     private final boolean enableDebug;
 
@@ -56,6 +67,8 @@ public class Weflab extends WebSocketListener {
         if (this.key==null || this.key.isEmpty()) {
             throw new NullPointerException("Page Key is EMPTY");
         }
+
+        this.URI="https://weflab.com/page/"+ key;
 
         try {
             Document document= Jsoup
@@ -107,6 +120,10 @@ public class Weflab extends WebSocketListener {
 
             connect();
 
+
+            new Thread(this::rouletteListener).start();
+//            rouletteListener(true);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -122,6 +139,60 @@ public class Weflab extends WebSocketListener {
         String json = m.group(1);
 //        System.out.println(json);
         return new Gson().fromJson(json, JsonObject.class);
+    }
+
+    public synchronized void rouletteListener() {
+        boolean showBrowser = true;
+
+        CefAppBuilder builder = new CefAppBuilder();
+
+        builder.setInstallDir(new File("jcef-bundle"));
+
+        builder.addJcefArgs("--disable-web-security");
+        builder.addJcefArgs("--allow-running-insecure-content");
+        builder.addJcefArgs("--ignore-certificate-errors");
+
+        builder.addJcefArgs("--enable-media-stream");
+        builder.addJcefArgs("--autoplay-policy=no-user-gesture-required");
+
+        builder.addJcefArgs("--enable-logging");
+        builder.addJcefArgs("--log-level=0");
+
+        builder.addJcefArgs("--enable-net-benchmarking");
+        builder.addJcefArgs("--enable-network-service");
+        builder.addJcefArgs("--enable-features=NetworkService,NetworkServiceInProcess");
+
+        builder.addJcefArgs("--remote-allow-origins=*");
+
+        if (!showBrowser) {
+            builder.addJcefArgs("--disable-gpu");
+            builder.addJcefArgs("--disable-gpu-compositing");
+        }
+
+        try {
+            CefApp app = builder.build();
+            CefClient client = app.createClient();
+
+            client.addRequestHandler(new RouletteInfoListener());
+
+            CefBrowser browser = client.createBrowser(
+                    this.URI,
+                    !showBrowser,
+                    false
+            );
+
+            if (showBrowser) {
+                JFrame frame = new JFrame("CEF Debug");
+                frame.setSize(1280, 800);
+                frame.add(browser.getUIComponent());
+                frame.setVisible(true);
+            }
+
+            browser.createImmediately();
+
+        } catch (IOException | UnsupportedPlatformException | InterruptedException | CefInitializationException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
