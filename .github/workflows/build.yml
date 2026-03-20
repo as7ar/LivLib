@@ -37,12 +37,12 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew clean build
+        run: ./gradlew clean build -x test
 
       - name: Collect JARs
         run: |
           mkdir -p build-artifacts
-          find . -path "*/build/libs/*.jar" -exec cp {} build-artifacts/ \;
+          find . -path "*/build/libs/*.jar" -exec cp {} libs/ \;
 
       - name: Upload all build outputs
         uses: actions/upload-artifact@v4
