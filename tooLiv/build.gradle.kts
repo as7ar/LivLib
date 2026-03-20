@@ -27,10 +27,11 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
-/*
+
 tasks.shadowJar {
+    minimize()
     archiveClassifier.set("")
     mergeServiceFiles()
 
     archiveFileName.set("tooLiv-$version.jar")
-}*/
+}
