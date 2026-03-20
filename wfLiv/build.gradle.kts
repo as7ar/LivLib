@@ -20,9 +20,10 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-/*tasks.shadowJar {
+tasks.shadowJar {
+    minize()
     archiveClassifier.set("")
     mergeServiceFiles()
 
     archiveFileName.set("wfLiv-$version.jar")
-}*/
+}
