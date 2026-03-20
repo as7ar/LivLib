@@ -21,7 +21,7 @@ dependencies {
 }
 
 tasks.shadowJar {
-    minize()
+    minimize()
     archiveClassifier.set("")
     mergeServiceFiles()
 
